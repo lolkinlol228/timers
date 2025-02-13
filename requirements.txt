@@ -5,3 +5,6 @@ requests
 python-dotenv
 replit
 numpy
+gunicorn
+python-telegram-bot
+python-dotenv
