@@ -21,12 +21,11 @@ FRIENDS_TIME_DIFF = {
 async def start(update: Update, context: CallbackContext):
     """Приветственное сообщение"""
     await update.message.reply_text(
-        'Привет! Отправь мне время в формате ЧЧ:ММ (например, 14:00), '
-        'и я скажу, сколько времени у твоих друзей.'
+        'ЧЧ:ММ (например, 14:00), 
     )
 
 async def convert_time(update: Update, context: CallbackContext):
-    """Конвертирует введённое пользователем время в локальное время друзей"""
+    """..."""
     user_time_str = update.message.text.strip()
     try:
         user_time = datetime.strptime(user_time_str, '%H:%M')
