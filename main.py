@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 # Разница во времени для друзей
 FRIENDS_TIME_DIFF = {
     '@frazyamp': +3,
-    '@waldemar': -1,
+    '@waldemarxl': -1,
 }
 
 async def start(update: Update, context: CallbackContext):
@@ -35,7 +35,7 @@ async def convert_time(update: Update, context: CallbackContext):
     try:
         # Убираем слэш перед временем
         user_time = datetime.strptime(user_time_str[1:], '%H:%M')
-        response = f'время мск: {user_time_str[1:]}:\n\n'
+        response = f'@FA1RY07A1L,@vgk: {user_time_str[1:]}:\n\n'
         for friend, diff_hours in FRIENDS_TIME_DIFF.items():
             friend_time = user_time + timedelta(hours=diff_hours)
             response += f'{friend}: {friend_time.strftime("%H:%M")}\n'
