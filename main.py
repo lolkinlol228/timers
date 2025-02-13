@@ -1,13 +1,11 @@
 import os
 import logging
 import asyncio
-from flask import Flask
+from aiohttp import web
 from datetime import datetime, timedelta
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 from dotenv import load_dotenv
-from hypercorn.config import Config
-from hypercorn.asyncio import serve
 
 # Load environment variables
 load_dotenv()
@@ -53,60 +51,57 @@ async def convert_time(update: Update, context: CallbackContext):
             'Пожалуйста, используйте формат ЧЧ:ММ (например, 14:00).'
         )
 
-async def setup_telegram():
-    """Sets up and starts the Telegram bot"""
-    try:
-        if not TOKEN:
-            logger.error("Telegram token not found in environment variables!")
-            return None
-        
-        logger.info("Initializing Telegram bot...")
-        app = Application.builder().token(TOKEN).build()
-        
-        logger.info("Adding command handlers...")
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), convert_time))
-        
-        logger.info("Starting bot...")
-        await app.initialize()
-        return app
-    except Exception as e:
-        logger.error(f"Error setting up Telegram bot: {str(e)}", exc_info=True)
-        return None
-
-# Flask app
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Бот работает!"
+async def web_handler(request):
+    """Simple web handler for health checks"""
+    return web.Response(text="Бот работает!")
 
 async def main():
-    """Main async function to run both the bot and web server"""
+    """Main function that runs both bot and web server"""
     try:
-        logger.info("Starting application...")
-        
-        # Setup Telegram bot
-        bot_app = await setup_telegram()
-        if bot_app is None:
-            logger.error("Failed to initialize Telegram bot")
+        # Initialize bot
+        if not TOKEN:
+            logger.error("Telegram token not found in environment variables!")
             return
 
-        # Configure Hypercorn
-        config = Config()
-        config.bind = [f"0.0.0.0:{int(os.environ.get('PORT', 10000))}"]
+        logger.info("Initializing Telegram bot...")
+        bot = Application.builder().token(TOKEN).build()
         
-        # Create tasks for both the bot and web server
-        tasks = [
-            asyncio.create_task(bot_app.run_polling()),
-            asyncio.create_task(serve(app, config))
-        ]
+        # Add handlers
+        logger.info("Adding command handlers...")
+        bot.add_handler(CommandHandler("start", start))
+        bot.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), convert_time))
+
+        # Initialize web app
+        app = web.Application()
+        app.router.add_get('/', web_handler)
         
-        logger.info("Both bot and web server are starting...")
-        await asyncio.gather(*tasks)
+        # Start both bot and web server
+        port = int(os.environ.get("PORT", 10000))
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, '0.0.0.0', port)
+        
+        # Start everything
+        await site.start()
+        logger.info(f"Web server started on port {port}")
+        
+        await bot.initialize()
+        logger.info("Bot initialized successfully")
+        
+        await bot.start()
+        logger.info("Bot started successfully")
+        
+        # Run forever
+        await asyncio.Event().wait()
         
     except Exception as e:
         logger.error(f"Application error: {str(e)}", exc_info=True)
+    finally:
+        # Cleanup
+        if 'bot' in locals():
+            await bot.shutdown()
+        if 'runner' in locals():
+            await runner.cleanup()
 
 if __name__ == '__main__':
     asyncio.run(main())
