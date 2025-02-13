@@ -21,7 +21,7 @@ FRIENDS_TIME_DIFF = {
 async def start(update: Update, context: CallbackContext):
     """Приветственное сообщение"""
     await update.message.reply_text(
-        'ЧЧ:ММ (например, 14:00), 
+        'ЧЧ:ММ (например, 14:00),'
     )
 
 async def convert_time(update: Update, context: CallbackContext):
