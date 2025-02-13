@@ -6,12 +6,14 @@ from datetime import datetime, timedelta
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 from dotenv import load_dotenv
+from hypercorn.config import Config
+from hypercorn.asyncio import serve
 
 # Load environment variables
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Configure more detailed logging
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -51,12 +53,12 @@ async def convert_time(update: Update, context: CallbackContext):
             'Пожалуйста, используйте формат ЧЧ:ММ (например, 14:00).'
         )
 
-async def run_bot():
-    """Runs the bot"""
+async def setup_telegram():
+    """Sets up and starts the Telegram bot"""
     try:
         if not TOKEN:
             logger.error("Telegram token not found in environment variables!")
-            return
+            return None
         
         logger.info("Initializing Telegram bot...")
         app = Application.builder().token(TOKEN).build()
@@ -65,41 +67,46 @@ async def run_bot():
         app.add_handler(CommandHandler("start", start))
         app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), convert_time))
         
-        logger.info("Starting bot polling...")
-        await app.run_polling()
+        logger.info("Starting bot...")
+        await app.initialize()
+        return app
     except Exception as e:
-        logger.error(f"Error in run_bot: {str(e)}", exc_info=True)
+        logger.error(f"Error setting up Telegram bot: {str(e)}", exc_info=True)
+        return None
 
-# Flask server for Render
+# Flask app
 app = Flask(__name__)
 
 @app.route('/')
 def home():
     return "Бот работает!"
 
-def run_flask():
-    """Runs the Flask server"""
-    try:
-        port = int(os.environ.get("PORT", 10000))
-        logger.info(f"Starting Flask server on port {port}")
-        app.run(host="0.0.0.0", port=port)
-    except Exception as e:
-        logger.error(f"Error starting Flask server: {str(e)}", exc_info=True)
-
-if __name__ == '__main__':
+async def main():
+    """Main async function to run both the bot and web server"""
     try:
         logger.info("Starting application...")
         
-        # Create a new event loop for the bot
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # Setup Telegram bot
+        bot_app = await setup_telegram()
+        if bot_app is None:
+            logger.error("Failed to initialize Telegram bot")
+            return
+
+        # Configure Hypercorn
+        config = Config()
+        config.bind = [f"0.0.0.0:{int(os.environ.get('PORT', 10000))}"]
         
-        # Run the bot in the background
-        logger.info("Setting up bot task...")
-        loop.create_task(run_bot())
+        # Create tasks for both the bot and web server
+        tasks = [
+            asyncio.create_task(bot_app.run_polling()),
+            asyncio.create_task(serve(app, config))
+        ]
         
-        # Run Flask in the main thread
-        logger.info("Starting Flask server...")
-        run_flask()
+        logger.info("Both bot and web server are starting...")
+        await asyncio.gather(*tasks)
+        
     except Exception as e:
-        logger.error(f"Application startup error: {str(e)}", exc_info=True)
+        logger.error(f"Application error: {str(e)}", exc_info=True)
+
+if __name__ == '__main__':
+    asyncio.run(main())
