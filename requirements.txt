@@ -2,7 +2,8 @@ python-telegram-bot==20.0
 python-dotenv==1.0.0
 asyncio==3.4.3
 flask
-python-telegram-bot
-python-dotenv
-Flask
+
+
 hypercorn
+
+aiohttp
