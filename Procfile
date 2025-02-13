@@ -1,1 +1,1 @@
-worker python timer.py
+web: gunicorn timer:main
