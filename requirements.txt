@@ -1,0 +1,7 @@
+python-telegram-bot[async]
+qrcode
+opencv-python
+requests
+python-dotenv
+replit
+numpy
