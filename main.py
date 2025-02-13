@@ -9,13 +9,13 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 
 # Разница во времени для друзей
 FRIENDS_TIME_DIFF = {
-    '@vgk': -3,  # Пример
+    '@frazyamp': +3,
+    '@waldemar': -1,
 }
 
 async def start(update: Update, context: CallbackContext):
@@ -28,19 +28,17 @@ async def start(update: Update, context: CallbackContext):
 async def convert_time(update: Update, context: CallbackContext):
     """Конвертирует введённое пользователем время в локальное время друзей"""
     user_time_str = update.message.text.strip()
-
     try:
         user_time = datetime.strptime(user_time_str, '%H:%M')
-
-        response = f'Когда у вас {user_time_str}:\n\n'
+        response = f'время мск:{user_time_str}:\n\n'
         for friend, diff_hours in FRIENDS_TIME_DIFF.items():
             friend_time = user_time + timedelta(hours=diff_hours)
             response += f'{friend}: {friend_time.strftime("%H:%M")}\n'
-
         await update.message.reply_text(response)
-
     except ValueError:
-        await update.message.reply_text('Пожалуйста, используйте формат ЧЧ:ММ (например, 14:00).')
+        await update.message.reply_text(
+            'Пожалуйста, используйте формат ЧЧ:ММ (например, 14:00).'
+        )
 
 def main():
     """Запускает бота"""
@@ -52,8 +50,12 @@ def main():
 
     # Добавляем обработчики команд и сообщений
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), convert_time))
-
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS),
+            convert_time
+        )
+    )
 
     logging.info("Бот запущен...")
     app.run_polling()
