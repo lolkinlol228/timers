@@ -25,11 +25,17 @@ async def start(update: Update, context: CallbackContext):
     )
 
 async def convert_time(update: Update, context: CallbackContext):
-    """..."""
+    """Обрабатывает команды для конвертации времени"""
     user_time_str = update.message.text.strip()
+    
+    # Проверяем, начинается ли сообщение с символа "/"
+    if not user_time_str.startswith('/'):
+        return  # Игнорировать сообщения, не начинающиеся с "/"
+    
     try:
-        user_time = datetime.strptime(user_time_str, '%H:%M')
-        response = f'время мск:{user_time_str}:\n\n'
+        # Убираем слэш перед временем
+        user_time = datetime.strptime(user_time_str[1:], '%H:%M')
+        response = f'время мск: {user_time_str[1:]}:\n\n'
         for friend, diff_hours in FRIENDS_TIME_DIFF.items():
             friend_time = user_time + timedelta(hours=diff_hours)
             response += f'{friend}: {friend_time.strftime("%H:%M")}\n'
